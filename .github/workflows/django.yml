@@ -19,8 +19,12 @@ jobs:
           POSTGRES_PASSWORD: postgres
           POSTGRES_DB: github_actions
         ports:
-          - 5432/tcp
-        options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
 
     steps:
       - uses: actions/checkout@v2
@@ -34,17 +38,20 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-        working-directory: ./postgres
+      - name: Connect to PostgreSQL, add env variables and migrate data
         env:
+          SECRET_KEY: ${{ secrets.SECRET_KEY }}
           POSTGRES_HOST: localhost
-          POSTGRES_PORT: ${{ job.services.postgres.ports[5432] }}
+          POSTGRES_PORT: 5432
+        run: |
+          python manage.py migrate
       - name: Lint with flake8
         run: flake8 .
-      - name: Add secret key env variable and run migrations
+      - name: Add secret key env variable and run tests
         env:
           SECRET_KEY: ${{ secrets.SECRET_KEY }}
         run: |
-          python manage.py migrate
-      - name: Run Tests
-        run: |
           python manage.py test
+      # - name: Run Tests
+      #   run: |
+      #     python manage.py test
